@@ -1,0 +1,152 @@
+import java.util.ArrayList;
+
+public class HuffmanEncodingWithHeap {
+
+    private static final int ASCII8 = 256;
+
+    /**
+     * Parses a string and produces a frequency count for each of its symbols.
+     * Counts are stored in an array with a place for each possible ASCII character.
+     * 
+     * @param message String to parse, one character at a time.
+     * @return array with frequency count for each possible ASCII value.
+     */
+    public static int[] countFrequency(String message) {
+        int[] frequencies = new int[ASCII8];
+        if (message != null) {
+            for (int i = 0; i < message.length(); i++) {
+                frequencies[(int) message.charAt(i)]++;
+            }
+        }
+        return frequencies;
+    }
+
+    /**
+     * Build a MinHeap of Huffman nodes, each a minimal tree containing a symbol and
+     * its frequency as it appears in a string we wish to compress.
+     * 
+     * @param frequencies int[] with the frequency counts for each ASCII symbol
+     * @return a MinHeap of HuffmanNodes, essentially a forest of minimal trees,
+     *         i.e., trees with one node each, and no children.
+     */
+    public static MinHeap<HuffmanNode> buildForest(int[] frequencies) {
+        MinHeap<HuffmanNode> minHeap = new MinHeap<>();
+        for (int asciiCode = 0; asciiCode < frequencies.length; asciiCode++) {
+            if (frequencies[asciiCode] > 0) {
+                minHeap.insert(new HuffmanNode((char) asciiCode, frequencies[asciiCode]));
+            }
+        }
+        return minHeap;
+    }
+
+    /**
+     * Apply Huffman's algorithm to organize a MinHeap of Huffman nodes into a
+     * Huffman tree. To achieve this, we remove the two nodes of least frequency
+     * from the heap, make them left and right children for a new node with no
+     * symbol and a combined frequency of its children, and place it back into the
+     * heap. At each iteration, the heap size is reduced by 1 node. When there is 1
+     * node left in the heap, it's the root of the Huffman tree.
+     * 
+     * @param minHeap MinHeap of HuffmanNodes with symbol and frequency data
+     * @return a HuffmanNode which is the root of the Huffman tree
+     */
+    public static HuffmanNode buildTree(MinHeap<HuffmanNode> minHeap) {
+        while (minHeap.size() > 1) {
+            // Remove the two nodes with the least frequencies from the heap
+            HuffmanNode t1 = minHeap.removeMin();
+            HuffmanNode t2 = minHeap.removeMin();
+            // Create a new node with a combined frequency and no symbol
+            HuffmanNode combined = new HuffmanNode(t1.getFrequency() + t2.getFrequency());
+            // Set the removed nodes as the left and right children of the new node
+            combined.setLeft(t1);
+            combined.setRight(t2);
+            // Add the combined node back into the heap
+            minHeap.insert(combined);
+        }
+        // The only node remaining in the heap is the root of the Huffman tree
+        return minHeap.getMin();
+    }
+
+    /**
+     * Helper method to create a Huffman encoding table.
+     * 
+     * @param root The root of the Huffman tree
+     * @return String[] indexed by ASCII values (0-255) containing the Huffman code
+     *         for the corresponding character
+     */
+    public static String[] createEncodingTable(HuffmanNode root) {
+        String[] codes = new String[ASCII8];
+        createEncodingTable(root, "", codes);
+        return codes;
+    }
+
+    private static void createEncodingTable(HuffmanNode node, String code, String[] codes) {
+        if (node != null) {
+            if ((int) node.getSymbol() != 0) {
+                codes[(int) node.getSymbol()] = code;
+            } else {
+                createEncodingTable(node.getLeft(), code + "0", codes);
+                createEncodingTable(node.getRight(), code + "1", codes);
+            }
+        }
+    }
+
+    /**
+     * Prints out the Huffman codes for ASCII symbols in a given message.
+     * 
+     * @param codes String[] the Huffman codes indexed by ASCII value
+     */
+    public static void displayCodes(String[] codes) {
+        for (int i = 0; i < codes.length; i++) {
+            if (codes[i] != null) {
+                System.out.printf("\n '%s' --> %-10s", (char) i, codes[i]);
+            }
+        }
+    }
+
+    /**
+     * Computes the number of bits required for the compressed message.
+     * 
+     * @param message String to compress
+     * @param codes   Huffman codes for compression
+     * @return int with length of compressed message
+     */
+    public static int computeCompressionLength(String message, String[] codes) {
+        int compressionLength = 0;
+        for (int i = 0; i < message.length(); i++) {
+            compressionLength += codes[(int) message.charAt(i)].length();
+        }
+        return compressionLength;
+    }
+
+    /**
+     * Reports the compression efficiency.
+     * 
+     * @param message String to compress
+     * @param codes   Huffman codes for compression
+     */
+    public static void reportEfficiency(String message, String[] codes) {
+        System.out.printf("\nCompressed message requires %d bits versus %d bits for ASCII encoding.\n",
+                computeCompressionLength(message, codes), message.length() * 8);
+    }
+
+    /**
+     * Encodes a message using Huffman encoding with a MinHeap.
+     * 
+     * @param message String to encode/compress
+     */
+    public static void encode(String message) {
+        int[] frequencies = countFrequency(message);
+        MinHeap<HuffmanNode> forest = buildForest(frequencies);
+        HuffmanNode huffmanTreeRoot = buildTree(forest);
+        String[] codes = createEncodingTable(huffmanTreeRoot);
+        displayCodes(codes);
+        reportEfficiency(message, codes);
+    }
+
+    /** Driver code */
+    public static void main(String[] args) {
+        String message = "this is a test for huffman encoding using a min heap";
+        encode(message);
+    }
+}
